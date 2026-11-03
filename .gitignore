@@ -36,7 +36,9 @@ lerna-debug.log*
 .DS_Store
 Thumbs.db
 
-# User Uploads
-server/uploads/*
-!server/uploads/.gitkeep
+# User temporary custom uploads
+server/uploads/custom-ref-*
+server/uploads/thumb-custom-ref-*
+client/public/uploads/custom-ref-*
+client/public/uploads/thumb-custom-ref-*
 
