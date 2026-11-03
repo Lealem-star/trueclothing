@@ -1,0 +1,241 @@
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum ProductCategory {
+  SHIFON
+  HABESHA
+  FABRIC
+}
+
+enum OrderType {
+  READY_MADE
+  CUSTOM_DESIGN
+  WHOLESALE
+  ABROAD
+}
+
+enum OrderStatus {
+  RECEIVED
+  IN_PRODUCTION
+  SHIPPED
+  DELIVERED
+}
+
+enum PaymentStatus {
+  UNPAID
+  PARTLY_PAID
+  PAID
+}
+
+enum RequestType {
+  CUSTOM_DESIGN
+  WHOLESALE
+  ABROAD
+}
+
+enum RequestStatus {
+  NEW
+  QUOTED
+  ACCEPTED
+  CLOSED
+}
+
+model AdminUser {
+  id           String   @id @default(uuid())
+  username     String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Customer {
+  id           String    @id @default(uuid())
+  name         String?
+  username     String?   @unique
+  phone        String    @unique
+  passwordHash String?
+  lastLoginAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  orders   Order[]
+  requests Request[]
+}
+
+model OtpCode {
+  id        String    @id @default(uuid())
+  phone     String
+  codeHash  String
+  expiresAt DateTime
+  attempts  Int       @default(0)
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([phone, expiresAt])
+}
+
+model Product {
+  id            String          @id @default(uuid())
+  nameEn        String
+  nameAm        String?
+  category      ProductCategory
+  price         Decimal         @db.Decimal(12, 2)
+  sizes         Json            @default("[]")
+  descriptionEn String          @db.Text
+  descriptionAm String?         @db.Text
+  published     Boolean         @default(true)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  images     ProductImage[]
+  orderItems OrderItem[]
+}
+
+model ProductImage {
+  id        String   @id @default(uuid())
+  productId String
+  url       String
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+}
+
+model Order {
+  id            String        @id @default(uuid())
+  code          String        @unique
+  customerId    String?
+  customerName  String
+  customerPhone String
+  type          OrderType     @default(READY_MADE)
+  description   String        @db.Text
+  total         Decimal       @db.Decimal(12, 2)
+  status        OrderStatus   @default(RECEIVED)
+  paymentStatus PaymentStatus @default(UNPAID)
+  notes         String?       @db.Text
+  requestId     String?       @unique
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  customer Customer?   @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  request  Request?    @relation("RequestToOrder", fields: [requestId], references: [id], onDelete: SetNull)
+  items    OrderItem[]
+  payments Payment[]
+
+  @@index([customerPhone])
+  @@index([status])
+}
+
+model OrderItem {
+  id           String   @id @default(uuid())
+  orderId      String
+  productId    String?
+  nameSnapshot String
+  size         String?
+  quantity     Int      @default(1)
+  unitPrice    Decimal  @db.Decimal(12, 2)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  order   Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  @@index([orderId])
+}
+
+model Request {
+  id          String        @id @default(uuid())
+  type        RequestType
+  customerId  String?
+  name        String
+  phone       String
+  details     Json
+  notes       String?       @db.Text
+  status      RequestStatus @default(NEW)
+  quoteText   String?       @db.Text
+  quoteAmount Decimal?      @db.Decimal(12, 2)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  customer Customer?      @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  images   RequestImage[]
+  order    Order?         @relation("RequestToOrder")
+
+  @@index([phone])
+  @@index([status])
+}
+
+model RequestImage {
+  id        String   @id @default(uuid())
+  requestId String
+  url       String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  request Request @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  @@index([requestId])
+}
+
+model Setting {
+  id              Int      @id @default(1)
+  businessName    String   @default("True clothing")
+  phone           String   @default("0985698888")
+  telegramUrl     String   @default("t.me/Trueclothing16")
+  alertOnOrders   Boolean  @default(true)
+  alertOnRequests Boolean  @default(true)
+  payTelebirr     Boolean  @default(true)
+  payCbeBirr      Boolean  @default(true)
+  payBank         Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model ActivityLog {
+  id        String   @id @default(uuid())
+  actorType String   @default("SYSTEM")
+  actorId   String?
+  message   String   @db.Text
+  createdAt DateTime @default(now())
+}
+
+model OrderCounter {
+  id         Int      @id @default(1)
+  lastNumber Int      @default(0)
+  updatedAt  DateTime @updatedAt
+}
+
+model Payment {
+  id                String   @id @default(uuid())
+  orderId           String
+  merchantReference String   @unique
+  chapaReference    String?  @unique
+  amount            Decimal  @db.Decimal(12, 2)
+  currency          String   @default("ETB")
+  paymentMethod     String   // telebirr, cbebirr
+  status            String   @default("PENDING") // PENDING, SUCCESS, FAILED
+  authType          String?  // USSD, OTP
+  processorRef      String?
+  customerPhone     String?
+  meta              Json?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@index([merchantReference])
+  @@index([chapaReference])
+}
+
+

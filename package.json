@@ -1,0 +1,22 @@
+{
+  "name": "true-clothing",
+  "version": "1.0.0",
+  "private": true,
+  "description": "True Clothing - Shifon and Habesha dresses and fabric in Ethiopia",
+  "scripts": {
+    "dev": "concurrently -n \"SERVER,CLIENT\" -c \"blue,green\" \"npm run dev --workspace=server\" \"npm run dev --workspace=client\"",
+    "start": "npm run start --workspace=server",
+    "build": "npm run build --workspace=client",
+    "install:all": "npm install && npm install --workspace=server && npm install --workspace=client",
+    "db:migrate": "npm run db:migrate --workspace=server",
+    "db:seed": "npm run db:seed --workspace=server",
+    "test:verify": "node server/test-verification.js"
+  },
+  "workspaces": [
+    "server",
+    "client"
+  ],
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}
