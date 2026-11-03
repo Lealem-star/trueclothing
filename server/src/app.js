@@ -69,6 +69,20 @@ app.use('/api/me', meRoutes);
 app.use('/api/activity', activityRoutes);
 app.use('/api/payments', paymentRoutes);
 
+// Serve frontend static build in production
+const clientDistPath = path.resolve(__dirname, '../../client/dist');
+app.use(express.static(clientDistPath));
+
+app.get('*', (req, res, next) => {
+  if (req.path.startsWith('/api') || req.path.startsWith('/uploads')) {
+    return next();
+  }
+  const indexPath = path.join(clientDistPath, 'index.html');
+  res.sendFile(indexPath, (err) => {
+    if (err) next();
+  });
+});
+
 // Global Error Handler
 app.use(errorHandler);
 
